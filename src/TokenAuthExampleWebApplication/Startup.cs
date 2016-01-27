@@ -9,14 +9,15 @@ using Microsoft.AspNet.Diagnostics;
 using Newtonsoft.Json;
 using Microsoft.AspNet.Http;
 using Microsoft.Extensions.DependencyInjection;
+using System.IO;
+using Microsoft.AspNet.DataProtection;
 
 namespace TokenAuthExampleWebApplication
 {
     public class Startup
     {
-        const string TokenAudience = "ExampleAudience";
-        const string TokenIssuer = "ExampleIssuer";
-        private RsaSecurityKey key;
+        public const string TokenAudience = "ExampleAudience";
+        public const string TokenIssuer = "ExampleIssuer";
         private TokenAuthOptions tokenOptions;
 
         public Startup(IHostingEnvironment env)
@@ -33,19 +34,20 @@ namespace TokenAuthExampleWebApplication
             //
             // See the RSAKeyUtils.GetKeyParameters method for an examle of loading from
             // a JSON file.
-            RSAParameters keyParams = RSAKeyUtils.GetRandomKey();
+            //RSAParameters keyParams = RSAKeyUtils.GetRandomKey();
 
-            // Create the key, and a set of token options to record signing credentials 
-            // using that key, along with the other parameters we will need in the 
-            // token controlller.
-            key = new RsaSecurityKey(keyParams);
-            tokenOptions = new TokenAuthOptions()
+            services.AddDataProtection();
+            services.ConfigureDataProtection(configure =>
             {
-                Audience = TokenAudience,
-                Issuer = TokenIssuer,
-                SigningCredentials = new SigningCredentials(key, SecurityAlgorithms.RsaSha256Signature)
-            };
+              // persist keys to a specific directory
+              configure.PersistKeysToFileSystem(new DirectoryInfo(@".\keys"));
+              // uncomment when doing this from different application
+              //configure.SetApplicationName("SameAppName"); 
+            });
+            var lServices = services.BuildServiceProvider();
 
+            tokenOptions = RSAKeyUtils.GetTokenOptions(lServices);
+            
             // Save the token options into an instance so they're accessible to the 
             // controller.
             services.AddInstance<TokenAuthOptions>(tokenOptions);
@@ -104,7 +106,7 @@ namespace TokenAuthExampleWebApplication
             app.UseJwtBearerAuthentication(options =>
             {
                 // Basic settings - signing key to validate with, audience and issuer.
-                options.TokenValidationParameters.IssuerSigningKey = key;
+                options.TokenValidationParameters.IssuerSigningKey = tokenOptions.SigningCredentials.Key;
                 options.TokenValidationParameters.ValidAudience = tokenOptions.Audience;
                 options.TokenValidationParameters.ValidIssuer = tokenOptions.Issuer;
 
