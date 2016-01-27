@@ -31,7 +31,7 @@ namespace TokenAuthExampleWebApplication
 
         public RSAKeyUtils(IDataProtectionProvider aProvider)
         {
-          mProtector = aProvider.CreateProtector("MobaAnalytics");
+          mProtector = aProvider.CreateProtector("TestProtector");
         }
 
         public static TokenAuthOptions GetTokenOptions(IServiceProvider aServiceProvider)
